@@ -9,6 +9,7 @@ side.
 
 - Linux
 - Python 3.9+
+- `pip3` (installed automatically by `setup.sh` if missing)
 - `ffmpeg` / `ffplay` with `libx264` support (installed automatically by
   `setup.sh` on Debian/Ubuntu; install manually on other distros)
 
@@ -21,7 +22,9 @@ make setup
 This will:
 1. Install `ffmpeg`/`ffplay` via `apt` if not already present (asks for
    `sudo`), and confirm `libx264` is available.
-2. Install Python dependencies (`opencv-python`) for the current user
+2. Install `pip3` via `apt` if not already present — it isn't bundled
+   by default on some distros (e.g. Ubuntu 26).
+3. Install Python dependencies (`opencv-python`) for the current user
    via `pip3 install --user --break-system-packages`, with no virtual
    environment.
 
@@ -45,15 +48,15 @@ You'll be asked to pick a camera index, then a preview window opens.
 While it's running, you can type these commands (+ Enter) in the
 terminal:
 
-| Key | Action              |
-|-----|----------------------|
+| Key | Action                 |
+|-----|----------------------  |
 | h   | toggle horizontal flip |
-| v   | toggle vertical flip |
-| i   | toggle color invert  |
-| +   | zoom in              |
-| -   | zoom out             |
-| r   | reset zoom           |
-| q   | quit                 |
+| v   | toggle vertical flip   |
+| i   | toggle color invert    |
+| +   | zoom in                |
+| -   | zoom out               |
+| r   | reset zoom             |
+| q   | quit                   |
 
 Recording stops and `output.mp4` is finalized when you quit (via `q`,
 or by closing the preview window).
@@ -78,4 +81,3 @@ Removes any generated `output.mp4` and cached bytecode.
 - This avoids OpenCV's `VideoWriter`, whose default H.264 path
   (`h264_v4l2m2m`) is a hardware encoder not available on most
   desktops/laptops — `libx264` is a reliable software encoder instead.
-
