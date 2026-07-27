@@ -21,13 +21,13 @@ import sys
 
 def get_cameras(max_index=10):
     """Probe camera indices 0..max_index-1 and return the ones that open."""
+    cv2.setLogLevel(cv2.LOG_LEVEL_SILENT)
     arr = []
     for index in range(max_index):
         cap = cv2.VideoCapture(index)
-        ok = cap.read()[0]
-        cap.release()
-        if ok:
+        if cap.isOpened() and cap.read()[0]:
             arr.append(index)
+        cap.release()
     return arr
 
 def main():
