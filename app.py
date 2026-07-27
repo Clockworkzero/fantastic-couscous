@@ -23,7 +23,7 @@ def get_cameras(max_index=10):
     cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_SILENT)
     arr = []
     for index in range(max_index):
-        cap = cv2.VideoCapture(index)
+        cap = cv2.VideoCapture(index, cv2.CAP_V4L2)
         if cap.isOpened() and cap.read()[0]:
             arr.append(index)
         cap.release()
@@ -69,7 +69,7 @@ def main():
     print(f"Cameras: {cam_list}")
     cam_choice = int(input("What camera would you like to use? "))
 
-    cam = cv2.VideoCapture(cam_choice)
+    cam = cv2.VideoCapture(cam_choice, cv2.CAP_V4L2)
 
     frame_width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -83,13 +83,8 @@ def main():
     state_lock = threading.Lock()
     running = {"value": True}
 
-
-
     threading.Thread(target=input_thread, daemon=True).start()
 
-    # Process 1: read raw frames on stdin, encode H.264 to file,
-    # and emit a preview stream (nut container -- carries frame boundaries,
-    # so the reader never has to guess how many bytes make up a frame).
     ffmpeg_cmd = [
         "ffmpeg", "-y",
         "-f", "rawvideo", "-vcodec", "rawvideo",
@@ -105,8 +100,7 @@ def main():
         "pipe:1",
     ]
 
-    # Process 2: display whatever it receives on stdin.
-    ffplay_cmd = ["ffplay", "-f", "nut", "-window_title", "Camera Preview", "-i", "-"]
+    ffplay_cmd = ["ffplay", "-autoexit", "-f", "nut", "-window_title", "Camera Preview", "-i", "-"]
 
     proc1 = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE,
                               stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
@@ -153,16 +147,27 @@ def main():
     finally:
         running["value"] = False
         cam.release()
+        
         if proc1.stdin and not proc1.stdin.closed:
             try:
                 proc1.stdin.close()
             except BrokenPipeError:
                 pass
-        proc1.wait()
-        proc2.wait()
-        print("Saved output.mp4")
 
+        try:
+            proc1.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc1.terminate()
+            
+        proc2.terminate()
+        try:
+            proc2.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            proc2.kill()
+
+        print("\nSaved output.mp4")
+        
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()
-
