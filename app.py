@@ -1,10 +1,7 @@
 """
 webcam-transcoder
-Captures from a webcam, encodes to H.264 (output.mp4) via ffmpeg's libx264,
-and shows a live preview via ffplay -- both fed from a single ffmpeg process
-so Python only has to write each frame's bytes once.
-
-Pass --no-save to skip writing output.mp4 and only show the live preview.
+Captures from a webcam and shows a live preview via ffplay, fed through
+ffmpeg. Nothing is written to disk.
 
 Live controls (type the letter + Enter in the terminal while running):
   h  toggle horizontal flip
@@ -16,7 +13,6 @@ Live controls (type the letter + Enter in the terminal while running):
   q  quit
 """
 
-import argparse
 import cv2
 import subprocess
 import threading
@@ -42,13 +38,6 @@ def get_cameras(max_index=10):
     return arr
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--no-save", action="store_true",
-        help="Don't write output.mp4 -- only show the live preview.",
-    )
-    args = parser.parse_args()
-
     def print_help():
         print(
             "\nControls (press Enter after each):\n"
@@ -121,21 +110,11 @@ def main():
         "-f", "rawvideo", "-vcodec", "rawvideo",
         "-pix_fmt", "bgr24", "-s", size, "-r", str(frame_fps),
         "-i", "-",
+        "-f", "nut", "-pix_fmt", "yuv420p",
+        "pipe:1",
     ]
-    if args.no_save:
-        ffmpeg_cmd += ["-f", "nut", "-pix_fmt", "yuv420p", "pipe:1"]
-    else:
-        ffmpeg_cmd += [
-            "-filter_complex", "[0:v]split=2[enc][disp]",
-            "-map", "[enc]",
-            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-            "-pix_fmt", "yuv420p",
-            "output.mp4",
-            "-map", "[disp]",
-            "-f", "nut", "-pix_fmt", "yuv420p",
-            "pipe:1",
-        ]
 
+    # Process 2: display whatever it receives on stdin.
     ffplay_cmd = ["ffplay", "-f", "nut", "-window_title", "Camera Preview", "-i", "-"]
 
     proc1 = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE,
@@ -188,7 +167,6 @@ def main():
                 proc1.stdin.close()
             except BrokenPipeError:
                 pass
-
         try:
             proc1.wait(timeout=5)
         except subprocess.TimeoutExpired:
@@ -203,9 +181,6 @@ def main():
             except subprocess.TimeoutExpired:
                 proc2.kill()
                 proc2.wait()
-
-        if not args.no_save:
-            print("Saved output.mp4")
 
 
 if __name__ == "__main__":
