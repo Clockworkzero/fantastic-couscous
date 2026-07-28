@@ -8,5 +8,5 @@ run:
 	@python3 app.py
 
 clean:
-	rm -rf output.mp4 __pycache__
+	rm -rf __pycache__
 
