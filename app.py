@@ -98,7 +98,6 @@ def main():
 
     size = f"{frame_width}x{frame_height}"
 
-    # --- shared live-toggle state ---
     state = {"flip_h": False, "flip_v": False, "invert": False, "scale": 1.0}
     state_lock = threading.Lock()
     running = {"value": True}
@@ -109,12 +108,10 @@ def main():
         "ffmpeg", "-y",
         "-f", "rawvideo", "-vcodec", "rawvideo",
         "-pix_fmt", "bgr24", "-s", size, "-r", str(frame_fps),
-        "-i", "-",
-        "-f", "nut", "-pix_fmt", "yuv420p",
-        "pipe:1",
+        "-i", "-","-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
+        "-pix_fmt", "yuv420p", "-f", "nut", "pipe:1",
     ]
 
-    # Process 2: display whatever it receives on stdin.
     ffplay_cmd = ["ffplay", "-f", "nut", "-window_title", "Camera Preview", "-i", "-"]
 
     proc1 = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE,
@@ -167,11 +164,13 @@ def main():
                 proc1.stdin.close()
             except BrokenPipeError:
                 pass
+
         try:
             proc1.wait(timeout=5)
         except subprocess.TimeoutExpired:
             proc1.kill()
             proc1.wait()
+
         try:
             proc2.wait(timeout=2)
         except subprocess.TimeoutExpired:
@@ -181,7 +180,6 @@ def main():
             except subprocess.TimeoutExpired:
                 proc2.kill()
                 proc2.wait()
-
 
 if __name__ == "__main__":
     main()
